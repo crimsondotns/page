@@ -39,7 +39,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const graphqlResponse = await fetch('https://api-scanner.defiyield.app/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (compatible)',
+        'Origin': 'https://vercel.app'
+      },
       body: JSON.stringify({ query }),
     });
 
