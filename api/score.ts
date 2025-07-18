@@ -1,11 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
+  let address = '';
+  let chainId = '';
+
+  if (req.method === 'POST') {
+    ({ address, chainId } = req.body);
+  } else if (req.method === 'GET') {
+    address = req.query.address as string;
+    chainId = req.query.chainId as string;
+  } else {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
-
-  const { address, chainId } = req.body;
 
   if (!address || !chainId) {
     return res.status(400).json({ error: 'Missing address or chainId' });
@@ -41,8 +47,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (compatible)',
-        'Origin': 'https://vercel.app'
+        'User-Agent': 'Mozilla/5.0',
+        'Origin': 'https://page-eight-omega.vercel.app'
       },
       body: JSON.stringify({ query }),
     });
