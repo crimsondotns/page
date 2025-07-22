@@ -1,4 +1,51 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+function randomUserAgent() {
+  const agents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+    'Mozilla/5.0 (X11; Linux x86_64)',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)',
+    'Mozilla/5.0 (Linux; Android 11)',
+  ];
+  return agents[Math.floor(Math.random() * agents.length)];
+}
+
+async function fetchWithRetry(query: string, retries = 2): Promise<any> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const response = await fetch('https://api-scanner.defiyield.app/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': randomUserAgent(),
+        'Origin': 'https://de.fi',
+        'Referer': 'https://de.fi',
+        'Accept': '*/*',
+      },
+      body: JSON.stringify({ query }),
+    });
+
+    const text = await response.text();
+
+    try {
+      const json = JSON.parse(text);
+      const score = json?.data?.score;
+
+      if (score || attempt === retries) {
+        return json;
+      }
+
+      // Wait before next retry
+      const delay = 500 + Math.random() * 800; // 500–1300ms
+      console.warn(`⚠️ Retry ${attempt + 1}: score=null. Waiting ${Math.round(delay)}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    } catch (err) {
+      if (attempt === retries) throw err;
+    }
+  }
+
+  throw new Error('Retries exhausted');
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   let address = '';
@@ -44,34 +91,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   `;
 
   try {
-    const graphqlResponse = await fetch('https://api-scanner.defiyield.app/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
-        'Origin': 'https://de.fi',
-        'Referer': 'https://de.fi',
-        'Accept': '*/*',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Connection': 'keep-alive',
-      },
-      body: JSON.stringify({ query }),
-    });
-
-    const resultText = await graphqlResponse.text();
-
-    try {
-      const json = JSON.parse(resultText);
-      return res.status(200).json(json);
-    } catch (jsonErr) {
-      console.error('❌ JSON parse error:', jsonErr);
-      console.error('❗ Raw response:', resultText);
-      return res.status(502).json({
-        error: 'Invalid JSON response from target',
-        raw: resultText,
-      });
-    }
+    const json = await fetchWithRetry(query, 2);
+    return res.status(200).json(json);
   } catch (err) {
     console.error('🚨 Proxy error:', err);
     return res.status(500).json({ error: 'Internal Server Error' });
