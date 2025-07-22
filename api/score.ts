@@ -5,10 +5,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let chainId = '';
 
   if (req.method === 'POST') {
-    ({ address, chainId } = req.body);
+    address = req.body.address;
+    chainId = req.body.chainId || req.body.chainid;
   } else if (req.method === 'GET') {
     address = req.query.address as string;
-    chainId = req.query.chainId as string;
+    chainId = (req.query.chainId || req.query.chainid) as string;
   } else {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -19,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const query = `
     query {
-      score(address: "${address}" network: ${chainId}) {
+      score(address: "${address}", network: ${chainId}) {
         score
         whitelisted
         exploited
